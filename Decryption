@@ -1,0 +1,89 @@
+using System;
+using System.Security.Cryptography;
+using System.IO;
+
+namespace Decryption
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string answer = "y";
+
+            do
+            {
+                if(answer.ToUpper() == "Y" || answer.ToUpper() == "YES")
+                {
+                    Decrypter();
+                }
+                else
+                {
+                    Console.WriteLine("Press enter to exit.");
+                    Console.ReadKey();
+                }
+                Console.WriteLine("");
+                Console.WriteLine("Do you have another file to decrypt? Y/N:");
+                answer = Console.ReadLine();
+
+            } while (answer.ToUpper() == "Y");
+
+        }
+
+        static void Decrypter()
+        {
+            Console.WriteLine("What is the file that you want to decrypt?");
+            string path = Console.ReadLine();
+
+            byte[] encrypted = File.ReadAllBytes(path);
+            byte[] key = File.ReadAllBytes(@"C:\Aes.key");
+            byte[] IV = File.ReadAllBytes(@"C:\IV.key");
+            string decryption = "";
+            
+
+
+
+            using (Aes myAes = Aes.Create())
+            {
+                decryption = DecryptStringFromBytes_Aes(encrypted, key, IV);
+
+            }
+            Console.WriteLine("");
+            Console.Write("The file string is: ");
+            Console.WriteLine(decryption);
+            
+        }
+
+        static string DecryptStringFromBytes_Aes(byte[] cipherText, byte[] Key, byte[] IV)
+        {
+            if (cipherText == null || cipherText.Length <= 0)
+                throw new ArgumentException("cipherText");
+            if (Key == null || Key.Length <= 0)
+                throw new ArgumentException("Key");
+            if (IV == null || IV.Length <= 0)
+                throw new ArgumentException("IV");
+
+            string plaintext = "";
+
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Padding = PaddingMode.Zeros;                
+                aesAlg.Key = Key;                
+                aesAlg.IV = IV;
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msDecrypt = new MemoryStream(cipherText))
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                        {
+                            plaintext = srDecrypt.ReadToEnd();
+                        }
+                    }
+                }
+            }
+            return plaintext;
+        }
+    }
+}
