@@ -1,0 +1,127 @@
+using System;
+using System.IO;
+using System.Security.Cryptography;
+
+namespace AESDecrypt
+{
+    class Program
+    {        
+        static void Main(string[] args)
+        {
+            string answer = "Y";
+
+            do
+            {
+                if(answer.ToUpper() == "Y" || answer.ToUpper() == "YES")
+                {
+                    encryption();
+                }
+                else
+                {
+                    Console.WriteLine("Press enter to exit.");
+                    Console.ReadKey();
+                }
+                Console.WriteLine("Do you have another string to encrypt? Y/N");
+                answer = Console.ReadLine();
+
+            } while (answer.ToUpper() == "Y");            
+        }
+
+        //runs the entered text through encryption based on keys already on the machine. If no keys exist new ones are generated
+        static void encryption()
+        {
+            Console.WriteLine("Where do you want to save the encrypted string?");
+            string path = Console.ReadLine();
+            Console.WriteLine("What is the string to encrypt? ");
+            string password = "";
+
+            ConsoleKeyInfo keyinfo;
+
+            do
+            {
+                keyinfo = Console.ReadKey(true);
+                if (keyinfo.Key != ConsoleKey.Backspace && keyinfo.Key != ConsoleKey.Enter)
+                {
+                    password += keyinfo.KeyChar;
+                    Console.Write("*");
+                }
+                else
+                {
+                    if (keyinfo.Key == ConsoleKey.Backspace && password.Length > 0)
+                    {
+                        password = password.Substring(0, (password.Length - 1));
+                    }
+                }
+            }
+
+            while (keyinfo.Key != ConsoleKey.Enter);
+
+
+            if(File.Exists(@"C:\Aes.key") == true && File.Exists(@"C:\IV.key") == true)
+            {                
+                var key = File.ReadAllBytes(@"C:\Aes.key");                
+                var IV = File.ReadAllBytes(@"C:\IV.key");
+                byte[] encrypted = EncryptStringToBytes_Aes(password, key, IV);
+                Console.WriteLine("");
+                Console.WriteLine("Your string has been encrypted!");
+                File.WriteAllBytes(path, encrypted);
+
+                byte[] encryption = File.ReadAllBytes(path);
+            }
+            else
+            {
+                using (Aes myAes = Aes.Create())
+                {
+
+                    File.WriteAllBytes(@"C:\Aes.key", myAes.Key);
+                    var key = File.ReadAllBytes(@"C:\Aes.key");
+                    File.WriteAllBytes(@"C:\IV.key", myAes.IV);
+                    var IV = File.ReadAllBytes(@"C:\IV.key");
+                    byte[] encrypted = EncryptStringToBytes_Aes(password, key, IV);
+
+
+                    File.WriteAllBytes(path, encrypted);
+
+                    byte[] encryption = File.ReadAllBytes(path);
+                    Console.WriteLine("");
+                    Console.WriteLine("Your string has been encrypted!");
+                }
+            }
+            
+        }
+        static byte[] EncryptStringToBytes_Aes(string plaintext, byte[] Key , byte[] IV)
+        {
+            if (plaintext == null || plaintext.Length <= 0)
+                throw new ArgumentException("plaintext");
+            if (Key == null || Key.Length <= 0)
+                throw new ArgumentException("Key");
+            if (IV == null || IV.Length <= 0)
+                throw new ArgumentException("IV");
+            byte[] encrypted;
+
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Padding = PaddingMode.Zeros;
+                
+                aesAlg.Key = Key;
+               
+                aesAlg.IV = IV;
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using(CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        using(StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                        {
+                            swEncrypt.Write(plaintext);
+                        }
+                        encrypted = msEncrypt.ToArray();
+                    }
+                }
+            }
+            return encrypted;
+        }
+    }
+}
